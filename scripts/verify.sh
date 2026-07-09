@@ -47,10 +47,10 @@ ufw=$(ssh $SSH_OPTS "sysadmin@$SERVER_IP" "sudo ufw status | head -1 | awk '{pri
 check "UFW active" "$( [[ "$ufw" == "active" ]] && echo ok || echo "not active" )"
 
 echo "--- Backup ---"
-backup=$(ssh $SSH_OPTS "sysadmin@$SERVER_IP" "test -d /var/backups/webserver01/latest && echo ok || echo missing")
+backup=$(ssh $SSH_OPTS "sysadmin@$SERVER_IP" "sudo test -d /var/backups/webserver01/latest && echo ok || echo missing")
 check "backup exists" "$backup"
 
-backup_files=$(ssh $SSH_OPTS "sysadmin@$SERVER_IP" "ls /var/backups/webserver01/latest/*.tar.gz 2>/dev/null | wc -l")
+backup_files=$(ssh $SSH_OPTS "sysadmin@$SERVER_IP" "sudo find /var/backups/webserver01/latest -name '*.tar.gz' 2>/dev/null | wc -l")
 check "backup has files ($backup_files)" "$( [[ "$backup_files" -ge 3 ]] && echo ok || echo "only $backup_files files" )"
 
 echo "--- Kernel Hardening ---"
