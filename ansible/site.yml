@@ -1,0 +1,13 @@
+---
+- name: Bootstrap Python 3.9
+  hosts: webservers
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Ensure Python 3.9 is available
+      raw: test -x /usr/bin/python3.9 || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3.9)
+      changed_when: false
+
+- import_playbook: playbooks/01-hardening.yml
+- import_playbook: playbooks/02-tls.yml
+- import_playbook: playbooks/03-backup.yml

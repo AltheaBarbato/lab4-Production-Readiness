@@ -1,0 +1,8 @@
+---
+- name: Configure backup and recovery
+  hosts: webservers
+  become: true
+  vars_files:
+    - ../vars/main.yml
+  roles:
+    - backup

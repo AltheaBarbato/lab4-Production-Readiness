@@ -1,0 +1,84 @@
+---
+- name: Install openssl
+  shell: DEBIAN_FRONTEND=noninteractive apt-get install -y -qq openssl
+  register: ssl_install
+  changed_when: "'Setting up' in ssl_install.stdout"
+
+- name: Create SSL directory
+  file:
+    path: /etc/nginx/ssl
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Generate self-signed TLS certificate
+  shell: |
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+      -keyout /etc/nginx/ssl/server.key \
+      -out /etc/nginx/ssl/server.crt \
+      -subj "/C=US/ST=IL/L=Chicago/O=IIT/CN=163.192.117.50"
+  args:
+    creates: /etc/nginx/ssl/server.crt
+
+- name: Set key permissions
+  file:
+    path: /etc/nginx/ssl/server.key
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Deploy nginx HTTPS config
+  copy:
+    dest: /etc/nginx/sites-available/default
+    content: |
+      server {
+          listen 80;
+          server_name 163.192.117.50;
+          return 301 https://$host$request_uri;
+      }
+
+      server {
+          listen 443 ssl;
+          server_name 163.192.117.50;
+
+          ssl_certificate     /etc/nginx/ssl/server.crt;
+          ssl_certificate_key /etc/nginx/ssl/server.key;
+          ssl_protocols       TLSv1.2 TLSv1.3;
+          ssl_ciphers         HIGH:!aNULL:!MD5;
+
+          root /var/www/html;
+          index index.html;
+
+          location / {
+              try_files $uri $uri/ =404;
+          }
+
+          location /stub_status {
+              stub_status;
+              allow 127.0.0.1;
+              deny all;
+          }
+      }
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload nginx
+
+- name: Open port 443 in UFW
+  shell: ufw allow 443/tcp comment "HTTPS"
+  register: ufw_443
+  changed_when: "'Rules updated' in ufw_443.stdout"
+
+- name: Allow 443 in iptables
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "443"
+    jump: ACCEPT
+    action: insert
+  register: ipt_443
+
+- name: Save iptables
+  shell: netfilter-persistent save
+  when: ipt_443.changed

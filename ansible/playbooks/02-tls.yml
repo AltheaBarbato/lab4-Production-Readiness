@@ -1,0 +1,8 @@
+---
+- name: Deploy TLS certificate
+  hosts: webservers
+  become: true
+  vars_files:
+    - ../vars/main.yml
+  roles:
+    - tls

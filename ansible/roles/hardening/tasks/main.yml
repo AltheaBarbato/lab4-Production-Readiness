@@ -1,0 +1,120 @@
+---
+- name: Remove unnecessary services
+  shell: DEBIAN_FRONTEND=noninteractive apt-get remove -y -qq {{ item }} 2>/dev/null || true
+  loop:
+    - telnet
+    - rsh-client
+    - talk
+    - finger
+  changed_when: false
+
+- name: Disable unnecessary systemd services
+  systemd:
+    name: "{{ item }}"
+    enabled: false
+    state: stopped
+  loop:
+    - cups
+    - avahi-daemon
+  failed_when: false
+
+- name: SSH hardening
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+  loop:
+    - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
+    - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+    - { regexp: '^#?MaxAuthTries', line: 'MaxAuthTries 3' }
+    - { regexp: '^#?ClientAliveInterval', line: 'ClientAliveInterval 300' }
+    - { regexp: '^#?ClientAliveCountMax', line: 'ClientAliveCountMax 2' }
+    - { regexp: '^#?X11Forwarding', line: 'X11Forwarding no' }
+    - { regexp: '^#?AllowAgentForwarding', line: 'AllowAgentForwarding no' }
+    - { regexp: '^#?PermitEmptyPasswords', line: 'PermitEmptyPasswords no' }
+    - { regexp: '^#?Protocol', line: 'Protocol 2' }
+  notify: restart sshd
+
+- name: Kernel sysctl hardening
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: true
+  loop:
+    - { key: 'net.ipv4.conf.all.rp_filter', value: '1' }
+    - { key: 'net.ipv4.icmp_echo_ignore_broadcasts', value: '1' }
+    - { key: 'net.ipv4.conf.all.accept_redirects', value: '0' }
+    - { key: 'net.ipv4.conf.all.send_redirects', value: '0' }
+    - { key: 'net.ipv4.conf.all.accept_source_route', value: '0' }
+    - { key: 'net.ipv4.tcp_syncookies', value: '1' }
+    - { key: 'kernel.dmesg_restrict', value: '1' }
+    - { key: 'fs.suid_dumpable', value: '0' }
+
+- name: Fail2ban strict config
+  copy:
+    dest: /etc/fail2ban/jail.local
+    content: |
+      [DEFAULT]
+      ignoreip = 127.0.0.1/8 {{ fail2ban_ignoreip | join(' ') }}
+      bantime  = {{ fail2ban_bantime }}
+      findtime = {{ fail2ban_findtime }}
+      maxretry = {{ fail2ban_maxretry }}
+
+      [sshd]
+      enabled = true
+      port    = ssh
+      logpath = %(sshd_log)s
+      backend = %(sshd_backend)s
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart fail2ban
+
+- name: Install auditd
+  shell: DEBIAN_FRONTEND=noninteractive apt-get install -y -qq auditd
+  register: auditd_install
+  changed_when: "'Setting up' in auditd_install.stdout"
+
+- name: Enable auditd
+  systemd:
+    name: auditd
+    enabled: true
+    state: started
+
+- name: Audit rules for sensitive files
+  copy:
+    dest: /etc/audit/rules.d/hardening.rules
+    content: |
+      -w /etc/passwd -p wa -k identity
+      -w /etc/shadow -p wa -k identity
+      -w /etc/ssh/sshd_config -p wa -k sshd
+      -w /etc/sudoers -p wa -k sudoers
+    owner: root
+    group: root
+    mode: "0640"
+  notify: reload auditd
+
+- name: Least privilege - check for unexpected SUID binaries
+  shell: find / -perm -4000 -type f 2>/dev/null | grep -v -E '^/(usr/bin|usr/sbin|bin|sbin)' || true
+  register: suid_check
+  changed_when: false
+
+- name: Least privilege - lock down /tmp
+  mount:
+    path: /tmp
+    src: tmpfs
+    fstype: tmpfs
+    opts: "defaults,noexec,nosuid,nodev,size=512m"
+    state: present
+
+- name: Auto security updates
+  copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    owner: root
+    group: root
+    mode: "0644"
