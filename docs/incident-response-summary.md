@@ -3,8 +3,6 @@
 
 Runbooks for the most likely things to go wrong on webserver01.
 
----
-
 ## Scenario 1: Web server down (nginx not responding)
 
 **Signs:** Uptime Kuma shows HTTP/HTTPS down, can't reach the site in a browser.
@@ -18,8 +16,6 @@ Runbooks for the most likely things to go wrong on webserver01.
 6. If disk is full: `df -h` and clear old logs in /var/log
 
 **Recovery check:** `curl -sk https://163.192.117.50` should return 200
-
----
 
 ## Scenario 2: Someone gets into SSH (unauthorized access)
 
@@ -36,7 +32,6 @@ Runbooks for the most likely things to go wrong on webserver01.
 
 **Recovery check:** new key works, old source IP blocked in UFW
 
----
 
 ## Scenario 3: Server is compromised, need to restore from backup
 
@@ -52,8 +47,6 @@ Runbooks for the most likely things to go wrong on webserver01.
 
 **Recovery check:** verify.sh passes, services back up
 
----
-
 ## Scenario 4: Disk filling up
 
 **Signs:** Prometheus DiskSpaceRunningLow alert fires, df -h shows >85% used.
@@ -68,7 +61,6 @@ Runbooks for the most likely things to go wrong on webserver01.
 
 **Recovery check:** df -h shows <80% used
 
----
 
 ## Scenario 5: Monitoring stack down (Prometheus/Grafana)
 
@@ -82,8 +74,6 @@ Runbooks for the most likely things to go wrong on webserver01.
 5. If totally broken, redeploy: `bash deploy.sh`
 
 **Recovery check:** `curl -s http://163.192.117.50:9090/-/ready` returns OK
-
----
 
 ## What monitoring covers
 
