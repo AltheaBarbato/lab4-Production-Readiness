@@ -3,8 +3,6 @@
 
 STRIDE breakdown for webserver01.
 
----
-
 ## What I'm protecting
 
 - The server (Ubuntu 20.04, Oracle Cloud free tier)
@@ -14,8 +12,6 @@ STRIDE breakdown for webserver01.
 - Backups in /var/backups/webserver01
 - Logs and audit records
 
----
-
 ## Who would attack this
 
 **Automated scanners** most likely. Constant background noise on any internet-facing server, looking for open ports and default creds.
@@ -24,14 +20,12 @@ STRIDE breakdown for webserver01.
 
 **Targeted attacker** someone actually after this server. Unlikely, it's a class project.
 
----
-
 ## STRIDE
 
 ### Spoofing
 Pretending to be a legitimate user to get SSH access or impersonating the server to intercept traffic.
 
-Key-only auth handles the SSH side. TLS cert on nginx means clients can verify they're talking to the right server (self-signed means they'll get a browser warning but the encryption still works).
+Key only auth handles the SSH side. TLS cert on nginx means clients can verify they're talking to the right server (self-signed means they'll get a browser warning but the encryption still works).
 
 Risk left: private key on my laptop, if that gets compromised someone has access.
 
@@ -47,7 +41,7 @@ Not being able to tell who did what.
 
 auditd logs user commands with timestamps. Auth events in auth.log. Both feed into monitoring from Lab 3.
 
-Risk left: no off-server log shipping.
+Risk left: no off server log shipping.
 
 ### Information disclosure
 Server info leaking to people who shouldn't see it.
@@ -70,7 +64,6 @@ fs.suid_dumpable=0, sudoers is audit-watched, removed unnecessary packages that 
 
 Risk left: kernel exploits. Auto-updates help but there's always a window.
 
----
 
 ## Open ports
 
