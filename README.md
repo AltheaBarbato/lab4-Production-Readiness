@@ -40,7 +40,6 @@ docs/
   production-readiness-review.md
 ```
 
----
 
 ## Deploying
 
@@ -49,8 +48,6 @@ bash deploy.sh
 ```
 
 Second run is idempotent (changed=0).
-
----
 
 ## Verifying
 
