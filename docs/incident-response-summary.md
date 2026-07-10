@@ -3,7 +3,6 @@
 
 Runbooks for the most likely things to go wrong on webserver01.
 
----
 
 ## Scenario 1: nginx is down
 
@@ -17,7 +16,6 @@ Runbooks for the most likely things to go wrong on webserver01.
 
 **Recovery check:** `curl -sk https://163.192.117.50` returns 200
 
----
 
 ## Scenario 2: Unauthorized SSH access
 
@@ -33,8 +31,6 @@ Runbooks for the most likely things to go wrong on webserver01.
 
 **Recovery check:** new key works, old IP blocked
 
----
-
 ## Scenario 3: Server compromised, need to restore
 
 **Signs:** files changed, unknown processes, auditd showing writes to sensitive files.
@@ -46,8 +42,6 @@ Runbooks for the most likely things to go wrong on webserver01.
 5. Run verify: `bash scripts/verify.sh`
 
 **Recovery check:** verify.sh passes, everything back up
-
----
 
 ## Scenario 4: Disk filling up
 
@@ -61,8 +55,6 @@ Runbooks for the most likely things to go wrong on webserver01.
 
 **Recovery check:** df -h under 80%
 
----
-
 ## Scenario 5: Monitoring stack down
 
 **Signs:** Grafana at :3000 unreachable, Prometheus at :9090 not responding.
@@ -75,7 +67,6 @@ Runbooks for the most likely things to go wrong on webserver01.
 
 **Recovery check:** `curl -s http://163.192.117.50:9090/-/ready` returns OK
 
----
 
 ## What monitoring is watching
 
