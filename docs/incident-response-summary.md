@@ -3,85 +3,87 @@
 
 Runbooks for the most likely things to go wrong on webserver01.
 
-## Scenario 1: Web server down (nginx not responding)
+---
 
-**Signs:** Uptime Kuma shows HTTP/HTTPS down, can't reach the site in a browser.
+## Scenario 1: nginx is down
 
-**Steps:**
-1. SSH in: `ssh -i ~/.ssh/lab1-key.pem sysadmin@163.192.117.50`
-2. Check nginx: `sudo systemctl status nginx`
-3. If it crashed, check logs: `sudo journalctl -u nginx --since "10 minutes ago"`
-4. Try restarting: `sudo systemctl restart nginx`
-5. If config is broken: `sudo nginx -t` to find the problem
-6. If disk is full: `df -h` and clear old logs in /var/log
+**Signs:** Uptime Kuma shows HTTP/HTTPS down, site unreachable in browser.
 
-**Recovery check:** `curl -sk https://163.192.117.50` should return 200
+1. SSH in and check nginx status: `sudo systemctl status nginx`
+2. Check recent logs: `sudo journalctl -u nginx --since "10 minutes ago"`
+3. Restart it: `sudo systemctl restart nginx`
+4. If config is broken, find out where: `sudo nginx -t`
+5. If disk is full: `df -h` then clear old logs from /var/log
 
-## Scenario 2: Someone gets into SSH (unauthorized access)
+**Recovery check:** `curl -sk https://163.192.117.50` returns 200
 
-**Signs:** auth.log shows a login from an unfamiliar IP, Prometheus alert on failed logins spikes.
+---
 
-**Steps:**
-1. Check who's logged in right now: `who` and `last`
-2. Kill active session if needed: `sudo pkill -u <username>`
-3. Check auth.log for the source IP: `sudo grep "Accepted" /var/log/auth.log | tail -20`
-4. Block the IP in UFW: `sudo ufw deny from <ip>`
-5. Rotate my SSH key immediately (generate new, add to authorized_keys, remove old)
-6. Check auditd for what they did: `sudo ausearch -ts recent -k identity`
-7. Review /etc/passwd and sudoers for any new accounts or changes
+## Scenario 2: Unauthorized SSH access
 
-**Recovery check:** new key works, old source IP blocked in UFW
+**Signs:** auth.log shows a login from an unfamiliar IP, or Prometheus SSH failed login alert fires.
 
+1. See who's currently logged in: `who` and `last`
+2. Kill their session if still active: `sudo pkill -u <username>`
+3. Find where they came from: `sudo grep "Accepted" /var/log/auth.log | tail -20`
+4. Block the IP: `sudo ufw deny from <ip>`
+5. Rotate SSH key right away (generate new, add to authorized_keys, delete old)
+6. Check what they did with auditd: `sudo ausearch -ts recent -k identity`
+7. Check /etc/passwd and sudoers for anything new
 
-## Scenario 3: Server is compromised, need to restore from backup
+**Recovery check:** new key works, old IP blocked
 
-**Signs:** files modified, unknown processes running, audit log shows changes to sensitive files.
+---
 
-**Steps:**
-1. Take a snapshot of current state for forensics: `sudo tar czf /tmp/forensic-$(date +%s).tar.gz /var/log`
-2. Stop services to prevent further damage: `sudo systemctl stop nginx docker`
-3. Run the restore script: `sudo /usr/local/bin/restore.sh` (restores from latest backup)
-   - Or from a specific backup: `sudo /usr/local/bin/restore.sh /var/backups/webserver01/backup-YYYYMMDD-HHMMSS`
-4. Rotate all credentials (SSH keys, Grafana password)
-5. Verify restore worked: `bash scripts/verify.sh`
+## Scenario 3: Server compromised, need to restore
 
-**Recovery check:** verify.sh passes, services back up
+**Signs:** files changed, unknown processes, auditd showing writes to sensitive files.
+
+1. Grab logs before touching anything: `sudo tar czf /tmp/forensic-$(date +%s).tar.gz /var/log`
+2. Stop services: `sudo systemctl stop nginx docker`
+3. Restore from backup: `sudo /usr/local/bin/restore.sh`
+4. Rotate all credentials (SSH key, Grafana password)
+5. Run verify: `bash scripts/verify.sh`
+
+**Recovery check:** verify.sh passes, everything back up
+
+---
 
 ## Scenario 4: Disk filling up
 
-**Signs:** Prometheus DiskSpaceRunningLow alert fires, df -h shows >85% used.
+**Signs:** Prometheus DiskSpaceRunningLow alert fires, or df -h shows over 85%.
 
-**Steps:**
-1. Find what's using space: `sudo du -sh /var/log/* | sort -hr | head -10`
-2. Rotate logs if needed: `sudo logrotate -f /etc/logrotate.conf`
-3. Check backup directory: `ls -lh /var/backups/webserver01/`
-4. Old backups should auto-delete after 7 days, but manually clean if needed:
+1. Find what's eating space: `sudo du -sh /var/log/* | sort -hr | head -10`
+2. Force log rotation if needed: `sudo logrotate -f /etc/logrotate.conf`
+3. Old backups should auto-delete after 7 days, but can clean manually:
    `find /var/backups/webserver01 -maxdepth 1 -type d -mtime +7 -exec rm -rf {} \;`
-5. Clear old Docker images if any: `sudo docker system prune -f`
+4. Clear unused Docker stuff: `sudo docker system prune -f`
 
-**Recovery check:** df -h shows <80% used
+**Recovery check:** df -h under 80%
 
+---
 
-## Scenario 5: Monitoring stack down (Prometheus/Grafana)
+## Scenario 5: Monitoring stack down
 
-**Signs:** Can't access Grafana at :3000, Prometheus at :9090 is unreachable.
+**Signs:** Grafana at :3000 unreachable, Prometheus at :9090 not responding.
 
-**Steps:**
-1. Check Docker containers: `sudo docker ps -a`
-2. If a container exited, check why: `sudo docker logs prometheus` (or grafana/uptime-kuma/node-exporter)
-3. Restart the container: `sudo docker start prometheus`
-4. If it keeps crashing, check if port is conflicting: `sudo ss -tlnp | grep 9090`
-5. If totally broken, redeploy: `bash deploy.sh`
+1. Check container status: `sudo docker ps -a`
+2. Look at logs for whatever exited: `sudo docker logs prometheus`
+3. Restart it: `sudo docker start prometheus`
+4. Check for port conflicts: `sudo ss -tlnp | grep 9090`
+5. If nothing works, redeploy: `bash deploy.sh`
 
 **Recovery check:** `curl -s http://163.192.117.50:9090/-/ready` returns OK
 
-## What monitoring covers
+---
 
-Prometheus + Grafana from Lab 3 handles alerting for:
-- Instance down (any scrape target missing)
+## What monitoring is watching
+
+From Lab 3, Prometheus alerts on:
+- Any scrape target going down
 - CPU over 80% for 1 minute
 - Disk over 85% for 2 minutes
 - Memory over 90% for 2 minutes
 - Failed SSH logins over 20 total
 
-Uptime Kuma watches HTTP, HTTPS, and Prometheus availability with 60 second intervals.
+Uptime Kuma checks HTTP, HTTPS, and Prometheus every 60 seconds.

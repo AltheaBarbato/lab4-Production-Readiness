@@ -1,7 +1,7 @@
 # Lab 4: Production Readiness, Security Hardening & Resilience
 **Name:** Althea Barbato
 
-Building on Labs 1-3 to get webserver01 closer to production-ready. Covers TLS deployment, backup/recovery, and deeper security hardening, all automated with Ansible.
+Built on top of Labs 1-3 to get webserver01 closer to production-ready. This lab covers TLS deployment, deeper security hardening, and automated backups with a tested restore, all automated through Ansible.
 
 **Server:** webserver01 (163.192.117.50, Oracle Cloud free tier)
 
@@ -9,9 +9,9 @@ Building on Labs 1-3 to get webserver01 closer to production-ready. Covers TLS d
 
 ## What this does
 
-- **TLS certificate** - self-signed cert deployed to nginx, HTTP redirects to HTTPS, TLS 1.2/1.3 only
-- **Security hardening** - removes unnecessary packages and services, tightens SSH, enables auditd, configures fail2ban, locks /tmp, sysctl hardening
-- **Automated backups** - nightly cron backup of all configs, 7 day retention, tested restore script
+- **TLS** - self-signed cert deployed to nginx, HTTP redirects to HTTPS, TLS 1.2/1.3 only
+- **Security hardening** - removed unnecessary packages and services, tightened SSH config, enabled auditd, configured fail2ban, locked /tmp, sysctl kernel hardening
+- **Automated backups** - nightly cron at 2am, 7 day retention, restore script tested
 
 ---
 
@@ -21,7 +21,7 @@ Building on Labs 1-3 to get webserver01 closer to production-ready. Covers TLS d
 ansible/
   inventory.ini           - server connection info
   vars/main.yml           - shared variables
-  site.yml                - main playbook (imports the three below)
+  site.yml                - main playbook, imports the three below
   playbooks/
     01-hardening.yml
     02-tls.yml
@@ -32,52 +32,33 @@ ansible/
     backup/               - backup scripts and cron role
 
 scripts/
-  verify.sh               - 11 checks to confirm everything deployed correctly
+  verify.sh               - 11 checks confirming everything deployed correctly
 
 docs/
-  vulnerability-report.md     - findings from manual assessment
-  threat-model.md             - STRIDE analysis
-  hardening-checklist.md      - what was done and what wasn't
-  incident-response-summary.md - runbooks for common failure scenarios
-  backup-recovery-plan.md     - how backup/restore works
-  production-readiness-review - honest assessment of gaps
+  vulnerability-report.md
+  threat-model.md
+  hardening-checklist.md
+  incident-response-summary.md
+  backup-recovery-plan.md
+  production-readiness-review.md
 ```
 
 ---
 
-## How to deploy
+## Deploying
 
-From WSL:
 ```bash
 bash deploy.sh
 ```
 
-Second run should be idempotent (changed=0).
+Second run is idempotent (changed=0).
 
 ---
 
-## How to verify
+## Verifying
 
 ```bash
 bash scripts/verify.sh
 ```
 
-Checks: SSH hardening, HTTPS up, HTTP redirect, TLS cert present, fail2ban, auditd, UFW, backup exists, backup has files, tcp_syncookies.
-
----
-
-## Screenshots to turn in
-
-1. `bash deploy.sh` output (first run)
-2. `bash scripts/verify.sh` output (all passing)
-3. `curl -Ik https://163.192.117.50` showing TLS cert info
-4. Grafana and Uptime Kuma still up from Lab 3
-
----
-
-## Prerequisites
-
-- Oracle Cloud VCN Security List must have port 443 open (TCP ingress)
-- SSH key at `~/.ssh/lab1-key.pem`
-- Ansible installed in WSL
-- Python 3.9 bootstrap handled by the first play in site.yml
+Checks SSH hardening, HTTPS, HTTP redirect, TLS cert, fail2ban, auditd, UFW, backup directory, backup files, and tcp_syncookies. All 11 pass.

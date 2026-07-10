@@ -1,101 +1,79 @@
 # Backup and Recovery Plan
 **Name:** Althea Barbato
 
-## What's backed up
+---
 
-The backup script at `/usr/local/bin/backup.sh` runs nightly at 2am and captures:
+## What gets backed up
 
-- nginx configuration (/etc/nginx/)
-- SSL certificate and key (/etc/nginx/ssl/)
+The backup script at `/usr/local/bin/backup.sh` runs nightly at 2am. It captures:
+
+- nginx config (/etc/nginx/)
+- SSL cert and key (/etc/nginx/ssl/)
 - Prometheus config (/etc/prometheus/)
 - Grafana config (/etc/grafana/)
 - Auditd rules (/etc/audit/rules.d/)
 - Fail2ban config (/etc/fail2ban/)
 - SSH server config (/etc/ssh/sshd_config)
 
-Each backup is a timestamped directory under `/var/backups/webserver01/` with individual `.tar.gz` archives per service. A `latest` symlink always points to the most recent backup.
+Each backup goes into a timestamped directory under `/var/backups/webserver01/` with individual `.tar.gz` archives per service. A `latest` symlink always points at the most recent one.
+
+---
 
 ## Retention
 
-Backups older than 7 days are automatically deleted by the backup script. That gives one week of daily snapshots without filling the disk.
+Anything older than 7 days gets automatically deleted by the backup script. One week of daily snapshots is enough for this setup without eating up disk space.
 
-## How to run a manual backup
+---
+
+## Running a backup manually
 
 ```bash
 sudo /usr/local/bin/backup.sh
 ```
 
-Check what was created:
+To see what it created:
 ```bash
-ls -lh /var/backups/webserver01/latest/
+sudo ls -lh /var/backups/webserver01/latest/
 ```
 
 ---
 
-## How to restore
+## Restoring
 
-The restore script at `/usr/local/bin/restore.sh` handles the full restore process.
+The restore script at `/usr/local/bin/restore.sh` handles everything. It stops services, puts files back where they belong, and restarts.
 
-**Restore from latest backup:**
+From latest:
 ```bash
 sudo /usr/local/bin/restore.sh
 ```
 
-**Restore from a specific backup:**
+From a specific backup:
 ```bash
-sudo /usr/local/bin/restore.sh /var/backups/webserver01/backup-20260101-020000
+sudo /usr/local/bin/restore.sh /var/backups/webserver01/20260709-184004
 ```
 
-The script stops services, restores files to their original locations, then restarts everything.
+---
 
-## Demo: run a backup and then restore it
+## Restore test I ran
 
-This is what I ran to test the backup/restore cycle:
+To test that restore actually works, I ran the backup, then broke nginx on purpose by moving the config file, then restored it.
 
-**Step 1: run the backup**
 ```bash
 sudo /usr/local/bin/backup.sh
-```
-
-Output should show each archive being created, then print the backup directory path.
-
-**Step 2: verify backup contents**
-```bash
-ls -lh /var/backups/webserver01/latest/
-```
-Should show at least: nginx.tar.gz, ssl.tar.gz, prometheus.tar.gz, grafana.tar.gz, system-security.tar.gz
-
-**Step 3: simulate a config change (break something)**
-```bash
 sudo mv /etc/nginx/nginx.conf /etc/nginx/nginx.conf.bak
-```
-
-**Step 4: restore**
-```bash
 sudo /usr/local/bin/restore.sh
-```
-
-**Step 5: verify nginx is working again**
-```bash
 curl -sk -o /dev/null -w "%{http_code}" https://163.192.117.50
 ```
-Should return 200.
 
-**Step 6: clean up the bak file**
-```bash
-sudo rm -f /etc/nginx/nginx.conf.bak
-```
+Got 200 back after the restore. Cleaned up the .bak file after confirming it worked.
 
-
-## Recovery time estimate
-
-Restore from backup takes about 2-3 minutes. Biggest issue is restarting Docker containers. Full redeploy from Ansible if something is really broken takes 5-10 minutes.
+Restore took about 2 minutes. Full Ansible redeploy from scratch takes closer to 5-10 minutes if something is really broken.
 
 ---
 
-## What's NOT backed up
+## What is NOT backed up
 
-- Docker images (they pull fresh from Docker Hub on redeploy)
-- Prometheus metrics data (historical data lost, starts collecting fresh)
-- Grafana dashboards (those are provisioned as code in the Ansible role)
-- The OS itself (would need a full disk snapshot for that, out of scope)
+- Docker images (they just pull fresh from Docker Hub on redeploy)
+- Prometheus historical metrics data (starts collecting fresh after restore)
+- Grafana dashboards (provisioned as code in the Ansible role, not stored in the container)
+- The OS itself (would need a full disk snapshot for that)

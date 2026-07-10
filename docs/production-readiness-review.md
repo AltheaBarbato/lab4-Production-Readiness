@@ -1,35 +1,37 @@
 # Production Readiness Review
 **Name:** Althea Barbato
 
-Honest look at where webserver01 stands and what would need to happen to call it actually production ready.
+Honest look at where webserver01 stands and what would need to change to call it actually production-ready.
 
-## What's working well
+---
 
-**Security hardening is solid for a class project.** SSH is locked down (key-only, no root, low auth tries), UFW is active, fail2ban is watching for brute force, auditd is logging changes to sensitive files, and unnecessary services are gone. Not bad.
+## What's working
 
-**TLS is deployed.** HTTP redirects to HTTPS, TLS 1.2/1.3 only, HSTS header would be a next step but the core encryption is there. Self-signed cert is a limitation but it's the right call without a domain.
+Security hardening is solid for a class project. SSH is key-only with no root login allowed, fail2ban blocks brute force, auditd watches the four most sensitive files, and services that had no reason to be there are gone.
 
-**Automated backups are running.** Nightly backup with 7 day retention is better than nothing. Restore was tested and works. That's the minimum bar.
+TLS is deployed. HTTP redirects to HTTPS, TLS 1.2/1.3 only. Self-signed cert means browser warnings but the encryption is real. It's the right call without a domain name.
 
-**Monitoring is already there from Lab 3.** Prometheus, Grafana, and Uptime Kuma are all up. Five alert rules covering the main failure modes. Three dashboards. That's more than a lot of small projects have.
+Backups are running nightly and the restore was tested and works. 7 day retention keeps disk usage reasonable.
 
-**Everything is automated.** ansible deploy.sh is idempotent, verify.sh catches regressions. Someone new could pick this up and run it without reading through a wall of manual steps.
+Monitoring from Lab 3 is still up. Prometheus, Grafana, and Uptime Kuma are all running with five alert rules and three dashboards covering the main failure modes.
 
+Everything is automated with Ansible. deploy.sh is idempotent and verify.sh catches regressions. Someone else could pick this up and run it without needing to read through a bunch of manual steps.
+
+---
 
 ## What would need to change for real production
 
-**No domain name.** Self signed certs mean browser warnings for anyone visiting. Real production needs a real domain and Let's Encrypt. Without it, HTTPS is encrypted but not trusted.
+No domain name. Self-signed certs trigger browser security warnings for anyone who visits. Real production needs a domain and Let's Encrypt. Without that, HTTPS is encrypted but not trusted by browsers.
 
-**No backup off-server.** All backups are on the same disk. If the server gets destroyed or the disk fails, the backups are gone too. Real production needs backups going somewhere else, S3 bucket minimum.
+No off-server backups. Everything is on the same disk. If the server dies, the backups die with it. A real setup needs backups going somewhere else, at minimum an S3 bucket.
 
-**Prometheus has no auth.** /metrics is open to the world. Grafana at least requires login. Prometheus needs a reverse proxy with basic auth or IP allowlisting to be production-safe.
+Prometheus has no auth. The /metrics endpoint is open to anyone who knows the IP and port. Grafana at least requires login. Prometheus would need a reverse proxy with basic auth or IP allowlisting before this was safe for real traffic.
 
-**Single server.** Everything is on one box. Nginx down means the app is down. Real production needs at minimum a load balancer, ideally two servers. Oracle Cloud free tier gives you two instances, could be done.
+Single server. If nginx crashes or the instance goes down, everything is down. Real production would want at least a load balancer and a second server. Oracle Cloud free tier actually gives two instances so it's doable.
 
-**No log aggregation.** Logs live on the server. If the server dies, recent logs are gone. Something like Loki or even just remote syslog would fix this.
+No log aggregation. Logs are on the server. If the server dies, recent logs are gone. Remote syslog or something like Loki would fix this.
 
-**Grafana data loss on redeploy.** Dashboard configuration is provisioned as code so that's fine, but historical metrics data is in the Prometheus container. Volume mount is there but a container restart loses the data if the volume isn't persisted to disk outside the container. Would need to check.
-
+---
 
 ## Production readiness score
 
@@ -42,9 +44,9 @@ Honest look at where webserver01 stands and what would need to happen to call it
 | Monitoring | good |
 | Alerting | good |
 | Automated backups | partial (on-server only) |
-| Disaster recovery | partial (tested restore, but no off-server backup) |
-| Log management | basic (no aggregation or shipping) |
+| Disaster recovery | partial (tested restore, no off-server copy) |
+| Log management | basic (no aggregation) |
 | High availability | not there (single server) |
-| Auto-scaling | not there (out of scope, free tier) |
+| Auto-scaling | not there (free tier, out of scope) |
 
-For a class project this is pretty strong. For actual production it would need the domain, off-server backups, and Prometheus auth at minimum before I'd feel okay putting real traffic on it.
+For a class project this is genuinely pretty good. For real production it would need the domain, off-server backups, and Prometheus auth at minimum before I'd put actual traffic on it.

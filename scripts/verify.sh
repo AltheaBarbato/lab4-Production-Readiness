@@ -50,7 +50,7 @@ echo "--- Backup ---"
 backup=$(ssh $SSH_OPTS "sysadmin@$SERVER_IP" "sudo test -d /var/backups/webserver01/latest && echo ok || echo missing")
 check "backup exists" "$backup"
 
-backup_files=$(ssh $SSH_OPTS "sysadmin@$SERVER_IP" "sudo find /var/backups/webserver01/latest -name '*.tar.gz' 2>/dev/null | wc -l")
+backup_files=$(ssh $SSH_OPTS "sysadmin@$SERVER_IP" "sudo ls /var/backups/webserver01/latest/ 2>/dev/null | grep -c '\.tar\.gz'")
 check "backup has files ($backup_files)" "$( [[ "$backup_files" -ge 3 ]] && echo ok || echo "only $backup_files files" )"
 
 echo "--- Kernel Hardening ---"
