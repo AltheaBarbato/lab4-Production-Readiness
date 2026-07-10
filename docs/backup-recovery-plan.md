@@ -1,8 +1,6 @@
 # Backup and Recovery Plan
 **Name:** Althea Barbato
 
----
-
 ## What gets backed up
 
 The backup script at `/usr/local/bin/backup.sh` runs nightly at 2am. It captures:
@@ -17,13 +15,9 @@ The backup script at `/usr/local/bin/backup.sh` runs nightly at 2am. It captures
 
 Each backup goes into a timestamped directory under `/var/backups/webserver01/` with individual `.tar.gz` archives per service. A `latest` symlink always points at the most recent one.
 
----
-
 ## Retention
 
 Anything older than 7 days gets automatically deleted by the backup script. One week of daily snapshots is enough for this setup without eating up disk space.
-
----
 
 ## Running a backup manually
 
@@ -35,8 +29,6 @@ To see what it created:
 ```bash
 sudo ls -lh /var/backups/webserver01/latest/
 ```
-
----
 
 ## Restoring
 
@@ -52,8 +44,6 @@ From a specific backup:
 sudo /usr/local/bin/restore.sh /var/backups/webserver01/20260709-184004
 ```
 
----
-
 ## Restore test I ran
 
 To test that restore actually works, I ran the backup, then broke nginx on purpose by moving the config file, then restored it.
@@ -68,8 +58,6 @@ curl -sk -o /dev/null -w "%{http_code}" https://163.192.117.50
 Got 200 back after the restore. Cleaned up the .bak file after confirming it worked.
 
 Restore took about 2 minutes. Full Ansible redeploy from scratch takes closer to 5-10 minutes if something is really broken.
-
----
 
 ## What is NOT backed up
 
