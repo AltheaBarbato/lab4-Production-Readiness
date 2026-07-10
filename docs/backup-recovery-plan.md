@@ -1,8 +1,6 @@
 # Backup and Recovery Plan
 **Name:** Althea Barbato
 
----
-
 ## What's backed up
 
 The backup script at `/usr/local/bin/backup.sh` runs nightly at 2am and captures:
@@ -17,13 +15,9 @@ The backup script at `/usr/local/bin/backup.sh` runs nightly at 2am and captures
 
 Each backup is a timestamped directory under `/var/backups/webserver01/` with individual `.tar.gz` archives per service. A `latest` symlink always points to the most recent backup.
 
----
-
 ## Retention
 
 Backups older than 7 days are automatically deleted by the backup script. That gives one week of daily snapshots without filling the disk.
-
----
 
 ## How to run a manual backup
 
@@ -53,8 +47,6 @@ sudo /usr/local/bin/restore.sh /var/backups/webserver01/backup-20260101-020000
 ```
 
 The script stops services, restores files to their original locations, then restarts everything.
-
----
 
 ## Demo: run a backup and then restore it
 
@@ -94,11 +86,10 @@ Should return 200.
 sudo rm -f /etc/nginx/nginx.conf.bak
 ```
 
----
 
 ## Recovery time estimate
 
-Restore from backup takes about 2-3 minutes. Biggest bottleneck is restarting Docker containers. Full redeploy from Ansible if something is really broken takes 5-10 minutes.
+Restore from backup takes about 2-3 minutes. Biggest issue is restarting Docker containers. Full redeploy from Ansible if something is really broken takes 5-10 minutes.
 
 ---
 
