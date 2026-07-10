@@ -1,9 +1,7 @@
 # Production Readiness Review
 **Name:** Althea Barbato
 
-Honest look at where webserver01 stands and what would need to happen to call it actually production-ready.
-
----
+Honest look at where webserver01 stands and what would need to happen to call it actually production ready.
 
 ## What's working well
 
@@ -17,11 +15,10 @@ Honest look at where webserver01 stands and what would need to happen to call it
 
 **Everything is automated.** ansible deploy.sh is idempotent, verify.sh catches regressions. Someone new could pick this up and run it without reading through a wall of manual steps.
 
----
 
 ## What would need to change for real production
 
-**No domain name.** Self-signed certs mean browser warnings for anyone visiting. Real production needs a real domain and Let's Encrypt. Without it, HTTPS is encrypted but not trusted.
+**No domain name.** Self signed certs mean browser warnings for anyone visiting. Real production needs a real domain and Let's Encrypt. Without it, HTTPS is encrypted but not trusted.
 
 **No backup off-server.** All backups are on the same disk. If the server gets destroyed or the disk fails, the backups are gone too. Real production needs backups going somewhere else, S3 bucket minimum.
 
@@ -33,7 +30,6 @@ Honest look at where webserver01 stands and what would need to happen to call it
 
 **Grafana data loss on redeploy.** Dashboard configuration is provisioned as code so that's fine, but historical metrics data is in the Prometheus container. Volume mount is there but a container restart loses the data if the volume isn't persisted to disk outside the container. Would need to check.
 
----
 
 ## Production readiness score
 
